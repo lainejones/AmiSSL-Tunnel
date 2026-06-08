@@ -42,8 +42,7 @@ see **Lessons learned** below.
 
 **Operational notes:** iBrowse caps concurrent connections (~5), so the daemon closes
 each connection as soon as the response body is delivered, or later images starve
-(handled in `tls_proxy.py`). iBrowse's missing throbber animation is a missing *install*
-asset (rerun the iBrowse installer), not an offload issue.
+(handled in `tls_proxy.py`).
 
 ## Installation
 
