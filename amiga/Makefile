@@ -1,4 +1,4 @@
-# AmiSSL emu — Model B shim build (amissl.library + amisslmaster.library)
+# AmiSSL-Tunnel — shim build (amissl.library + amisslmaster.library)
 #
 # No custom bsdsocket.library: the shim rides the resident Roadshow/AmiTCP stack.
 # Build under WSL:

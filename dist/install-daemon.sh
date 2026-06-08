@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# AmiSSL emu - daemon (tls_proxy.py) installer for Linux / Raspberry Pi.
+# AmiSSL-Tunnel - daemon (tls_proxy.py) installer for Linux / Raspberry Pi.
 #
 # Installs the LAN TLS-offload daemon as a systemd service so it starts on
 # boot, then prints the IP + port to enter in the Amiga-side Installer.
@@ -14,8 +14,8 @@
 # ===========================================================================
 set -euo pipefail
 
-PREFIX=/opt/amissl-emu
-SERVICE=amissl-emu
+PREFIX=/opt/amissl-tunnel
+SERVICE=amissl-tunnel
 PORT="${AMISSL_PORT:-8443}"
 LISTEN="${AMISSL_LISTEN:-0.0.0.0}"
 
@@ -48,7 +48,7 @@ install -m 0755 "$SRC" "$PREFIX/tls_proxy.py"
 echo "Writing systemd unit /etc/systemd/system/${SERVICE}.service ..."
 cat >"/etc/systemd/system/${SERVICE}.service" <<EOF
 [Unit]
-Description=AmiSSL emu LAN TLS offload daemon
+Description=AmiSSL-Tunnel LAN TLS offload daemon
 After=network-online.target
 Wants=network-online.target
 
@@ -75,14 +75,14 @@ IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 cat <<EOF
 
 -------------------------------------------------------------------
-AmiSSL emu daemon installed and running.
+AmiSSL-Tunnel daemon installed and running.
 
   service : ${SERVICE}
   listen  : ${LISTEN}:${PORT}
   status  : systemctl status ${SERVICE}
   logs    : journalctl -u ${SERVICE} -f
 
-On the Amiga, run the AmiSSL emu Installer and enter:
+On the Amiga, run the AmiSSL-Tunnel Installer and enter:
   daemon address : ${IP:-<this-box-LAN-IP>}
   daemon port    : ${PORT}
 -------------------------------------------------------------------

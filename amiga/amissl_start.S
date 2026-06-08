@@ -150,7 +150,7 @@ LibName:
     .even
 
 IDString:
-    .ascii  "AmiSSL emu (Proxy LAN) 50.3 b21-dup2 (31.05.2026)"
+    .ascii  "AmiSSL-Tunnel 50.3 b21-dup2 (31.05.2026)"
     .byte   13,10,0
     .even
 

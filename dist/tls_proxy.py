@@ -203,7 +203,7 @@ async def main():
 
     server = await asyncio.start_server(handle_client, host, port)
     addrs = ", ".join(str(s.getsockname()) for s in server.sockets)
-    LOG.info("AmiSSL emu TLS daemon listening on %s", addrs)
+    LOG.info("AmiSSL-Tunnel TLS daemon listening on %s", addrs)
     async with server:
         await server.serve_forever()
 

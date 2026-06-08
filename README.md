@@ -45,6 +45,100 @@ each connection as soon as the response body is delivered, or later images starv
 (handled in `tls_proxy.py`). iBrowse's missing throbber animation is a missing *install*
 asset (rerun the iBrowse installer), not an offload issue.
 
+## Installation
+
+Two halves: a **daemon** on a fast LAN machine (Linux, Raspberry Pi, Mac, PC) and the
+**shim** (`amissl.library` + `amisslmaster.library`) on the Amiga. Prebuilt libraries
+and both installers are in [`dist/`](dist/).
+
+### 1 — Daemon (the LAN box)
+
+Requires **Python 3 only** (standard library; no pip packages).
+
+**Linux / Raspberry Pi (systemd — installs and starts on boot):**
+
+```sh
+cd dist
+sudo ./install-daemon.sh                      # listen on 0.0.0.0:8443
+# sudo AMISSL_PORT=9000 ./install-daemon.sh    # custom port
+```
+
+This copies `tls_proxy.py` to `/opt/amissl-tunnel/`, creates a sandboxed systemd
+service `amissl-tunnel`, starts it, and prints the **IP + port** to enter on the
+Amiga. Manage it with:
+
+```sh
+systemctl status amissl-tunnel
+journalctl -u amissl-tunnel -f                # live request log
+```
+
+**macOS / Windows / WSL, or just to try it** — run it directly:
+
+```sh
+python3 dist/tls_proxy.py 0.0.0.0 8443
+```
+
+**Firewall:** allow inbound TCP on the chosen port (default **8443**) from your LAN.
+The daemon makes the outbound TLS connection and holds the system CA bundle, so it
+does the certificate verification; the Amiga↔daemon hop is plaintext on your trusted
+LAN.
+
+### 2 — Shim (the Amiga)
+
+Requires a working TCP/IP stack that provides `bsdsocket.library` — **Roadshow,
+AmiTCP, Miami, or a314bsd**.
+
+Copy the contents of `dist/` to the Amiga (network share, ADF, etc.), then from a
+Shell **inside that folder**:
+
+```
+Installer Install
+```
+
+The installer backs up any existing `LIBS:amissl.library` / `amisslmaster.library`
+to `*.bak` (so you can restore real AmiSSL later), copies the two shim libraries to
+`LIBS:`, and asks for the **daemon address + port**, saving it to `ENV:` and
+`ENVARC:AMISSLPROXY`.
+
+**Manual install** (no Installer):
+
+```
+Copy amissl.library LIBS:
+Copy amisslmaster.library LIBS:
+SetEnv SAVE AMISSLPROXY 192.168.1.50:8443      ; your daemon's IP:port
+```
+
+(`SetEnv SAVE` writes both `ENV:` and `ENVARC:`.)
+
+### 3 — Verify
+
+With the daemon running and your stack up, launch iBrowse, AWeb, or Amelinium and
+open an `https://` site such as `https://aminet.net`. The daemon log should show
+`CONNECT aminet.net:443 → … → HTTP/1.1 200`.
+
+### Configuration
+
+`ENV:AMISSLPROXY` = `host:port`
+
+- `host` — the daemon's LAN IP (e.g. `192.168.1.50`) or a hostname your stack resolves.
+- `port` — the daemon's port (default `8443`).
+- Unset/unparseable → the shim falls back to its compiled default `127.0.0.1:8443`
+  (handy for local/VM testing).
+
+It's read once at the first TLS connect. The outbound port the daemon dials is taken
+from the app's own socket (`getpeername`), so HTTPS, mail (IMAPS / POP3S / SMTPS),
+IRC, and FTPS all work — not just port 443.
+
+### Uninstall
+
+Restore the backups (`Copy LIBS:amissl.library.bak LIBS:amissl.library` and the
+master), or just delete the two shim libraries if you had no prior AmiSSL.
+
+### Build from source
+
+`cd amiga && make` under WSL with the bebbo amiga-gcc toolchain on PATH builds both
+libraries — see [`amiga/Makefile`](amiga/Makefile).
+
 ## Lessons learned (debugging AWeb + concurrent images)
 
 These are the non-obvious things that cost time; they are baked into the current `amiga/amissl.c`.

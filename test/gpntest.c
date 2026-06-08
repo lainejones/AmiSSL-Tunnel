@@ -1,6 +1,6 @@
 /* gpntest — does this bsdsocket implementation support getpeername()?
  *
- * Connects a TCP socket to the AmiSSL emu daemon at 127.0.0.1:8443 (no TLS, no
+ * Connects a TCP socket to the AmiSSL-Tunnel daemon at 127.0.0.1:8443 (no TLS, no
  * AmiSSL, no DNS — just a plain connect to a known local port), then calls
  * getpeername() and prints the peer port.  If it prints 8443, getpeername works
  * and returns the real port — which is exactly what the shim's sess_connect now

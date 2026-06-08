@@ -82,7 +82,7 @@ LibName:
     .even
 
 IDString:
-    .ascii  "AmiSSL emu master (Model B LAN) 50.2 b1 (30.05.2026)"
+    .ascii  "AmiSSL-Tunnel master 50.2 b1 (30.05.2026)"
     .byte   13,10,0
     .even
 

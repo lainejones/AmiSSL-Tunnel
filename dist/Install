@@ -1,5 +1,5 @@
 ; ===========================================================================
-; AmiSSL emu - Installer Script
+; AmiSSL-Tunnel - Installer Script
 ; Installs the LAN TLS-offload shim (amissl.library + amisslmaster.library)
 ; and points it at your daemon via ENV:/ENVARC:AMISSLPROXY.
 ; Requires Installer 43.3+ (standard with AmigaOS 2.0+).
@@ -10,7 +10,7 @@
 (complete 0)
 
 (message
-    "AmiSSL emu - LAN TLS offload\n\n"
+    "AmiSSL-Tunnel - LAN TLS offload\n\n"
     "This installs a drop-in amissl.library + amisslmaster.library that "
     "offload HTTPS/TLS to a daemon (tls_proxy.py) running on a fast machine "
     "on your LAN, so iBrowse / AWeb / Amelinium can do https:// on a plain "
@@ -28,14 +28,14 @@
     (abort
         "Could not find amissl.library.\n\n"
         "Please run this Installer from inside the extracted "
-        "AmiSSL emu archive folder."
+        "AmiSSL-Tunnel archive folder."
     )
 )
 (if (not (exists "amisslmaster.library"))
     (abort
         "Could not find amisslmaster.library.\n\n"
         "Please run this Installer from inside the extracted "
-        "AmiSSL emu archive folder."
+        "AmiSSL-Tunnel archive folder."
     )
 )
 
@@ -48,7 +48,7 @@
     (if (= 1 (askbool
             (prompt
                 "bsdsocket.library was not found in LIBS:.\n\n"
-                "AmiSSL emu needs a working TCP/IP stack (Roadshow, AmiTCP, "
+                "AmiSSL-Tunnel needs a working TCP/IP stack (Roadshow, AmiTCP, "
                 "Miami, or a314bsd). Some stacks keep bsdsocket.library "
                 "resident rather than in LIBS:.\n\n"
                 "If you are sure your stack is set up, choose Continue.")
@@ -78,7 +78,7 @@
         (message
             "An existing LIBS:amisslmaster.library was found.\n\n"
             "It will be backed up to LIBS:amisslmaster.library.bak "
-            "before the AmiSSL emu shim is installed.")
+            "before the AmiSSL-Tunnel shim is installed.")
         (run "Copy >NIL: LIBS:amisslmaster.library LIBS:amisslmaster.library.bak CLONE")
     )
 )
@@ -101,7 +101,7 @@
     (askstring
         (prompt
             "Enter the IP address (or hostname) of the machine running the "
-            "AmiSSL emu daemon (tls_proxy.py).\n\n"
+            "AmiSSL-Tunnel daemon (tls_proxy.py).\n\n"
             "This is the LAN box that performs the TLS for you.")
         (help
             "The daemon runs on a fast machine on your LAN - a Linux box, "
@@ -142,7 +142,7 @@
 ; Done
 ; -------------------------------------------------------
 (message
-    "AmiSSL emu installation complete!\n\n"
+    "AmiSSL-Tunnel installation complete!\n\n"
     "Installed:\n"
     "  LIBS:amissl.library\n"
     "  LIBS:amisslmaster.library\n"

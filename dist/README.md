@@ -1,4 +1,4 @@
-# AmiSSL emu — deployment
+# AmiSSL-Tunnel — deployment
 
 Give a plain 68k Amiga `https://` by offloading the TLS to a fast machine on
 your LAN. Two installs: the **daemon** on the LAN box, the **shim** on the Amiga.
