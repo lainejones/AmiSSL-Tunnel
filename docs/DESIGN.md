@@ -1,17 +1,13 @@
 # AmiSSL-Tunnel — design notes
 
-Status: **brainstorm, nothing locked.** This document records the architecture and
-the open decisions so we can argue with them later.
-
-> **UPDATE 2026-06-01 — what actually got built/tested:** the working 68k shim in
-> `amiga/` is the **Option-1 tunnel** (§4.1 / Model T below), NOT Model B. It was
-> validated in WinUAE with iBrowse 3 loading https://aminet.net over the offload
-> (`daemon/tls_proxy.py`). Model B (§3, §9, §10) — the model these notes *recommend*
-> — is still unimplemented; its `OOP_*` opcodes exist in `amissl.c` but `sess_connect`
-> uses the tunnel. So when reading below, treat Model B as the **plan** and the tunnel
-> as the **current reality**. (This works on WinUAE because `bsdsocket_emu` keeps the
-> socket host-side, so `Dup2Socket` is local — the "socket locality" caveat in §3
-> still applies to a real native-stack Ethernet Amiga.)
+> **How the shipping shim works** is described in the project README. In short:
+> at `SSL_connect` the shim opens a socket to the daemon, sends `CONNECT host port`,
+> and once the daemon has done the verified TLS handshake it `Dup2Socket`s that
+> socket onto the app's fd and relays plaintext.
+>
+> The rest of this file is **design history** — it records the alternatives that
+> were considered during development (including a crypto-oracle approach that was
+> never built). Kept for context; not a description of current behaviour.
 
 ## 1. Goal
 

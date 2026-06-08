@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-AmiSSL emu — LAN TLS offload daemon (Option 1: tunnel).
+AmiSSL-Tunnel — LAN TLS offload daemon.
 
 Listens for plaintext TCP from an Amiga (via its resident bsdsocket.library),
 reads a one-line CONNECT handshake naming the target server, performs the TLS
 handshake AND the outbound TCP connection to that server, then relays bytes
 transparently:  Amiga plaintext  <->  daemon  <->  TLS to server.
 
-This is the recommended starter backend described in docs/DESIGN.md §4 and the
-wire protocol in docs/PROTOCOL.md. It deliberately does NOT implement the
-BSDOP_SSL_* opcode set (that would be Option 2).
+This is what the shipping amissl.library speaks to. See the project README.
 
 Run on the Ubuntu/LAN box:
     python3 tls_proxy.py                 # listen 0.0.0.0:8443

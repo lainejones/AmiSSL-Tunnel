@@ -1,20 +1,20 @@
 /*
- * amissl.c — AmiSSL compatibility shim (AmiSSL emu, Model B)
+ * amissl.c — AmiSSL compatibility shim for AmiSSL-Tunnel
  *
- * amissl.library exports the OpenSSL/AmiSSL ABI but offloads the TLS CRYPTO to a
- * daemon on the LAN (tls_oracle.py).  Unlike a314bsd, the app keeps its OWN socket
- * to server:443 (over the resident Roadshow/AmiTCP bsdsocket.library); that socket
- * carries the real TLS records.  The shim moves bytes between that socket and the
- * oracle (which runs ssl.SSLObject + MemoryBIO and never touches the network to the
- * server).  This preserves the app's fd/WaitSelect contract.  See docs/PROTOCOL.md.
+ * amissl.library exports the OpenSSL/AmiSSL ABI but offloads TLS to a daemon on
+ * the LAN (tls_proxy.py), reached over the resident Roadshow/AmiTCP/Miami
+ * bsdsocket.library.  At SSL_connect the shim opens a socket to the daemon, sends
+ * "CONNECT <host> <port>", and once the daemon has completed the verified TLS
+ * handshake to the real server it Dup2Socket()s that socket onto the app's own fd
+ * and relays plaintext.  So SSL_read/SSL_write become plain bsd recv/send, and the
+ * app's fd/WaitSelect contract is preserved.  See the project README.
  *
- *   App SSL_read/SSL_write   →  amissl.library
- *   amissl.library           →  oracle RPC over control socket (resident bsdsocket)
- *                            +  bsd_send/bsd_recv on the app's own server socket
- *   tls_oracle.py (LAN)      →  ssl.SSLObject crypto, system CA bundle (apt-current)
+ *   App SSL_read/SSL_write  →  amissl.library  →  bsd recv/send on the daemon
+ *                                                  socket Dup2Socket'd onto the fd
+ *   tls_proxy.py (LAN)      →  Python ssl crypto, system CA bundle
  *
- * Opaque handles:
- *   SSL_CTX* is a sentinel (1).  SSL* is a 1-based index into g_sess[] (0 = NULL).
+ * Opaque handles (must look like real pointers — AWeb range-checks them):
+ *   SSL_CTX* = 0x4000 sentinel.  SSL* = 0x5000 + 1-based g_sess[] index.
  *   Apps treat them as opaque and never dereference.
  *
  * *** ABI NOTE *** The LVO table in amissl_start.S (asset #1) is reused UNCHANGED
@@ -280,11 +280,12 @@ _bsd_dup2socket(APTR bbase, LONG oldfd, LONG newfd)
 }
 
 /* ===========================================================================
- * Model B — TLS crypto-oracle transport
+ * Legacy crypto-oracle opcodes (UNUSED)
  *
- * The app keeps its own socket to server:443 (set via SSL_set_fd, or opened by the
- * BIO path).  The slow crypto runs on a LAN daemon reached over a single shared
- * control socket.  Wire protocol (big-endian) in docs/PROTOCOL.md:
+ * An earlier design kept the app's own socket to server:443 and ran the crypto on
+ * a LAN daemon over a shared control socket. These OOP_* opcodes were defined for
+ * that path but are NOT used — the shipping shim uses the CONNECT+Dup2Socket relay
+ * described at the top of this file. Kept only so the definitions don't churn.
  *   request : op(1) ssl_id(4) aux(4) inlen(4) in[inlen]
  *   response: status(1) pending(4) outlen(4) out[outlen]
  * =========================================================================== */

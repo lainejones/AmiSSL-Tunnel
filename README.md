@@ -45,10 +45,6 @@ each connection as soon as the response body is delivered, or later images starv
 (handled in `tls_proxy.py`). iBrowse's missing throbber animation is a missing *install*
 asset (rerun the iBrowse installer), not an offload issue.
 
-A crypto-oracle variant (keep the TLS records on the Amiga's own socket and use the
-daemon purely as a crypto engine — "Model B" in `docs/`) is sketched as a possible
-future direction; it is not built. The shipping shim is the tunnel described above.
-
 ## Lessons learned (debugging AWeb + concurrent images)
 
 These are the non-obvious things that cost time; they are baked into the current `amiga/amissl.c`.
@@ -108,14 +104,11 @@ These are the non-obvious things that cost time; they are baked into the current
 
 | Path | Contents |
 |------|----------|
-| `docs/DESIGN.md` | Architecture, reusable assets, socket-locality finding, the design models considered |
-| `docs/PROTOCOL.md` | The crypto-oracle ("Model B") wire protocol — a *planned* alternative, not what ships |
-| `daemon/tls_proxy.py` | **The ACTIVE daemon** — Option-1 tunnel; this is what the built 68k shim speaks. Run it: `python3 tls_proxy.py 0.0.0.0 8443` |
-| `daemon/tls_oracle.py` | Model B crypto-oracle daemon (memory BIO). Validated standalone, but NOT yet wired to the 68k shim (Model B port is TODO). |
-| `daemon/oracle_sim.py` | Reference 'shim simulator' for Model B — what the Amiga side would do once ported |
-| `daemon/smoke_test.py` | Smoke test for the tunnel daemon |
-| `amiga/` | The tunnel shim: `amissl.c`/`amisslmaster.c` (+ `_start.S` LVO tables). `make` under WSL (amiga-gcc) builds `amissl.library` (~53 KB) + `amisslmaster.library`. |
+| `amiga/` | The shim: `amissl.c`/`amisslmaster.c` (+ `_start.S` LVO tables). `make` under WSL (amiga-gcc) builds `amissl.library` (~53 KB) + `amisslmaster.library`. |
+| `daemon/tls_proxy.py` | The LAN daemon — this is what the 68k shim speaks to. Run it: `python3 tls_proxy.py 0.0.0.0 8443` |
+| `daemon/smoke_test.py` | Smoke test for the daemon |
 | `dist/` | Ready-to-install package: `Install` script, prebuilt libraries, daemon + `install-daemon.sh`. |
+| `docs/DESIGN.md` | Architecture and design notes |
 
 ## Relationship to existing projects
 
