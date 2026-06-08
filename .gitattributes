@@ -1,0 +1,4 @@
+# Amiga sources build under WSL / amiga-gcc; keep LF in the working tree.
+* text=auto eol=lf
+*.library binary
+*.png binary

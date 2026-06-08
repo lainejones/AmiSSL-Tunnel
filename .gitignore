@@ -1,0 +1,24 @@
+# --- Large extracted third-party installers (MUI, AWeb) - not redistributed ---
+_mui/
+_aweb/
+
+# --- Debug screenshots and run logs (kept out of the repo) ---
+*.png
+*.log
+
+# --- Python caches ---
+__pycache__/
+*.pyc
+
+# --- Build artifacts (rebuild with amiga/Makefile) ---
+*.o
+amiga/*.library
+
+# --- Compiled test binary (build from test/gpntest.c) ---
+test/gpntest
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+*~
+*.swp
