@@ -1,9 +1,10 @@
 # AmiSSL-Tunnel — LAN TLS offload for AmigaOS
 
-Take the AmiSSL/OpenSSL ABI emulation proven in **a314SSLlib** (now merged into
-**a314bsd**) and generalise it: offload TLS to a **generic machine on the LAN**
-(an Ubuntu box, anything that runs Python) reached over **ordinary TCP sockets**,
-instead of to the A314 Pi over the A314 bus.
+Take the AmiSSL/OpenSSL ABI emulation that **a314bsd** now bakes in (its
+`amissl.library` offloads TLS over the A314 bus to a Raspberry Pi) and generalise
+it: offload TLS to a **generic machine on the LAN** (an Ubuntu box, anything that
+runs Python) reached over **ordinary TCP sockets**, instead of being tied to the
+A314 bus and a Pi.
 
 The win: the AmiSSL shim no longer assumes the A314 ecosystem. It rides whatever
 `bsdsocket.library` is resident — **Roadshow, AmiTCP, Miami, or a314bsd** — so any
@@ -14,7 +15,7 @@ runs on a fast LAN host.
 iBrowse / AWeb
    │  OpenSSL / AmiSSL LVO calls
    ▼
-amissl.library + amisslmaster.library      ← reused, ABI-frozen (a314SSLlib builds 1–27)
+amissl.library + amisslmaster.library      ← AmiSSL/OpenSSL ABI shim (ABI-frozen)
    │  "open a connection, relay these bytes"
    ▼
 [transport module]  ──TCP via resident bsdsocket──►  LAN TLS daemon  ──TLS──►  server
@@ -165,10 +166,10 @@ These are the non-obvious things that cost time; they are baked into the current
    `sess_connect`/`sess_read`/`sess_write` use `s->bbase`, never the shared field. This is what took
    both browsers from "partial, flaky" to "14/14 images, zero failures, first pass."
 
-   **This same defect exists in the parent `a314SSLlib`** (`amiga/amissl.c` `OpenLibrary`s one
-   bsdsocket base into the shared `base->BsdBase` and routes all tasks' SSL ops through it, with no
-   per-task isolation). It is a strong candidate for why concurrent-image browsers behaved
-   unreliably there — the per-task isolation added here was simply missing.
+   The shim lineage this grew from is now folded into **a314bsd** (which bakes in its own
+   AmiSSL shim). a314bsd offloads over the A314 bus rather than a resident LAN
+   `bsdsocket.library`, so its concurrency characteristics differ — but per-task `SocketBase`
+   isolation is the general lesson for any shared-base AmiSSL shim.
 
 4. **Browser-side image behaviour ≠ transport.** AWeb's default `IMAGELOADING` is not `ALL`, so it
    instantiates inline `<img>` as suppressed placeholders and never fetches them (a plain refresh
@@ -187,8 +188,8 @@ These are the non-obvious things that cost time; they are baked into the current
   `RELOAD IMAGES`/`SAVESETTINGS` ARexx commands (lesson 4). We did not copy AWeb code — we studied it
   to understand what AWeb expects from AmiSSL.
 - **AmiSSL / OpenSSL ABI** — the LVO table and ABI emulated here follow AmiSSL (OpenSSL on AmigaOS).
-- **a314SSLlib / a314bsd** — the parent project this forks the *idea* from; the AmiSSL ABI shim was
-  first debugged there (builds 1–27). See "Relationship to existing projects" below.
+- **a314bsd** — the parent project this forks the *idea* from; it now bakes in its own AmiSSL
+  shim (offloading TLS over the A314 bus to a Pi). See "Relationship to existing projects" below.
 - **Test site:** **aminet.net** — a small, Amiga-friendly HTTPS site used as the rendering target.
 - **Tooling:** WinUAE (`bsdsocket_emu`), the amiga-gcc/Bebbo cross toolchain, and Python/asyncio for
   the `tls_proxy.py` daemon.
@@ -205,8 +206,11 @@ These are the non-obvious things that cost time; they are baked into the current
 
 ## Relationship to existing projects
 
-- **a314bsd** — bsdsocket proxy over A314; an earlier home of the AmiSSL shim.
-  This project is a clean, separate fork of the *idea*, not the code.
+- **a314bsd** — replaces `bsdsocket.library` with a proxy that forwards BSD socket
+  calls over A314 to a Raspberry Pi, and now **bakes in its own AmiSSL shim**
+  (`amissl.library` + `amisslmaster.library`) that offloads TLS over the A314 bus to
+  the Pi. AmiSSL-Tunnel takes the same idea but offloads to a generic LAN host over
+  ordinary TCP, so it runs on *any* resident `bsdsocket.library` (Roadshow / AmiTCP /
+  Miami — including a314bsd) instead of requiring A314 hardware.
 - **a314SSLlib** — the original dev sandbox where the AmiSSL ABI shim was first
-  debugged (builds 1–27). The lessons captured there are the starting capital for
-  this project.
+  debugged. No longer a separate project: that work was folded into **a314bsd**.

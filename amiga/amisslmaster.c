@@ -1,5 +1,5 @@
 /*
- * amisslmaster.c — AmiSSL master loader library for a314bsd
+ * amisslmaster.c — AmiSSL master loader library for AmiSSL-Tunnel
  *
  * amisslmaster.library is the standard AmiSSL 4.x entry point.
  * Apps (like iBrowse) open this library and call:

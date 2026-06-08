@@ -1,4 +1,4 @@
-| amissl_start.S — AmiSSL compatibility shim for a314bsd
+| amissl_start.S — AmiSSL compatibility shim for AmiSSL-Tunnel
 | GNU Assembler m68k Motorola syntax
 |
 | LVO table verified against the real AmiSSL SDK FD file:

@@ -1,4 +1,4 @@
-| amisslmaster_start.S — AmiSSL master loader library for a314bsd
+| amisslmaster_start.S — AmiSSL master loader library for AmiSSL-Tunnel
 | GNU Assembler m68k Motorola syntax
 |
 | amisslmaster.library is the standard AmiSSL 4.x entry point.
