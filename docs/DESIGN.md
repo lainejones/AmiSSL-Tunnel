@@ -1,4 +1,4 @@
-# amissl-tunnel — design notes
+# AmiSSL-Tunnel — design notes
 
 Status: **brainstorm, nothing locked.** This document records the architecture and
 the open decisions so we can argue with them later.

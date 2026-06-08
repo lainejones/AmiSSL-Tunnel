@@ -1,4 +1,4 @@
-# amissl-tunnel — LAN TLS offload for AmigaOS
+# AmiSSL-Tunnel — LAN TLS offload for AmigaOS
 
 Take the AmiSSL/OpenSSL ABI emulation proven in **a314SSLlib** (now merged into
 **a314bsd**) and generalise it: offload TLS to a **generic machine on the LAN**
