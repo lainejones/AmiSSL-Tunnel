@@ -23,35 +23,31 @@ amissl.library + amisslmaster.library      ← reused, ABI-frozen (a314SSLlib bu
 
 ## Status
 
-**Working end-to-end on 68k for BOTH iBrowse 3 and AWeb 3.6b8 — the built shim is the
-Option-1 TUNNEL, not Model B.**
-
-The 68k shim in `amiga/` (`amissl.library` + `amisslmaster.library`) is built and
-**validated in WinUAE** (2026-06-01): a clean OS 3.2 / 68020 box with WinUAE's
-`bsdsocket_emu`. **iBrowse 3** and **AWeb 3.6b8** both load **https://aminet.net** over the
-offload — full page **plus all 14 inline images, zero failures, on the first pass**. The chain is
+**Working end-to-end on 68k AmigaOS.** The shim in `amiga/` (`amissl.library` +
+`amisslmaster.library`) is built and validated in WinUAE (clean OS 3.2 / 68020 with
+`bsdsocket_emu`): **iBrowse 3**, **AWeb 3.6b8** and **Amelinium** all load
+**https://aminet.net** over the offload — full page **plus all 14 inline images, zero
+failures, on the first pass**. The chain is
 `browser → amisslmaster → amissl shim → tls_proxy.py → TLS to server → plaintext relay`.
 
-Getting AWeb (and clean concurrent image loading in both) working took three fixes beyond
-the initial tunnel; see **Lessons learned** below.
+**How it works:** at `SSL_connect` the shim opens a socket to the daemon and sends
+`CONNECT <host> <port>`; once the daemon has completed the verified TLS handshake to
+the real server it `Dup2Socket`s that socket onto the app's fd and relays plaintext, so
+`SSL_read`/`SSL_write` become plain `recv`/`send`. The port is read from the app's own
+connected fd (`getpeername`), so the offload is generic — HTTPS, IMAPS, etc. The daemon
+is `daemon/tls_proxy.py`.
 
-What the built shim actually does (despite the Model-B framing below): at
-`SSL_connect` it opens its own socket to the daemon, sends `CONNECT <sni> 443\n`,
-gets `OK\n` (daemon has done the verified TLS to the real server), then
-`Dup2Socket`s that socket onto iBrowse's fd and relays plaintext. So `SSL_read/write`
-are plain `recv/send`. **The matching daemon is `daemon/tls_proxy.py`** (the tunnel),
-NOT `tls_oracle.py`.
+Getting AWeb and clean concurrent image loading working took three non-obvious fixes;
+see **Lessons learned** below.
 
-**Model B (crypto oracle) — the originally-decided model — is still TODO.** The
-`OOP_NEW/HANDSHAKE/...` opcodes are defined in `amissl.c` but `sess_connect` doesn't
-use them; rewriting it to the oracle pump (+ the `SSL_pending` fix, DESIGN §10) is
-the remaining work. `tls_oracle.py` + `oracle_sim.py` validate that path on the
-daemon side (real `HTTP/1.1 200 OK` from example.com over TLSv1.3 on the Mint VM).
+**Operational notes:** iBrowse caps concurrent connections (~5), so the daemon closes
+each connection as soon as the response body is delivered, or later images starve
+(handled in `tls_proxy.py`). iBrowse's missing throbber animation is a missing *install*
+asset (rerun the iBrowse installer), not an offload issue.
 
-Known gaps from the WinUAE test: iBrowse caps concurrent connections (~5), so the
-tunnel daemon must **close each connection once the response body is delivered** or
-later images starve (fixed in `tls_proxy.py`). iBrowse's missing **throbber/spinning
-animation** is a missing *install* asset (rerun the iBrowse installer), not an offload issue.
+A crypto-oracle variant (keep the TLS records on the Amiga's own socket and use the
+daemon purely as a crypto engine — "Model B" in `docs/`) is sketched as a possible
+future direction; it is not built. The shipping shim is the tunnel described above.
 
 ## Lessons learned (debugging AWeb + concurrent images)
 
@@ -112,14 +108,14 @@ These are the non-obvious things that cost time; they are baked into the current
 
 | Path | Contents |
 |------|----------|
-| `docs/DESIGN.md` | Architecture, reusable assets, socket-locality finding, the three models, **Model B port plan (§10)** |
-| `docs/PROTOCOL.md` | **Model B oracle protocol** (chosen); Option-1 tunnel kept for reference |
+| `docs/DESIGN.md` | Architecture, reusable assets, socket-locality finding, the design models considered |
+| `docs/PROTOCOL.md` | The crypto-oracle ("Model B") wire protocol — a *planned* alternative, not what ships |
 | `daemon/tls_proxy.py` | **The ACTIVE daemon** — Option-1 tunnel; this is what the built 68k shim speaks. Run it: `python3 tls_proxy.py 0.0.0.0 8443` |
 | `daemon/tls_oracle.py` | Model B crypto-oracle daemon (memory BIO). Validated standalone, but NOT yet wired to the 68k shim (Model B port is TODO). |
 | `daemon/oracle_sim.py` | Reference 'shim simulator' for Model B — what the Amiga side would do once ported |
 | `daemon/smoke_test.py` | Smoke test for the tunnel daemon |
-| `amiga/` | **Built tunnel shim**: `amissl.c`/`amisslmaster.c` (+ `_start.S`), compiled `amissl.library` (~53 KB) + `amisslmaster.library`. `make` under WSL (amiga-gcc). |
-| `include/` | (empty) shared headers |
+| `amiga/` | The tunnel shim: `amissl.c`/`amisslmaster.c` (+ `_start.S` LVO tables). `make` under WSL (amiga-gcc) builds `amissl.library` (~53 KB) + `amisslmaster.library`. |
+| `dist/` | Ready-to-install package: `Install` script, prebuilt libraries, daemon + `install-daemon.sh`. |
 
 ## Relationship to existing projects
 
