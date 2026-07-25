@@ -1,0 +1,23 @@
+AmiSSL-Tunnel on the A4000 (Roadshow) — quick update steps
+===========================================================
+Daemon is LIVE: 192.168.50.34 port 8443  (pi4k, systemd service
+"amissl-tunnel" — starts whenever the A4000/TF4060 is powered).
+
+The libs on this share are the TUNNEL build (b21-dup2) — they replace
+any older Model-B / probe builds still in LIBS: from the May sessions.
+
+From a Shell on the A4000, CD into this drawer (A4kAmiSSL), then:
+
+  Copy amissl.library       LIBS:
+  Copy amisslmaster.library LIBS:
+  SetEnv SAVE AMISSLPROXY 192.168.50.34:8443
+  ; (SYS:AmiSSL rename + assign removal was already done in May)
+
+COLD BOOT, then in iBrowse / AWeb open:  https://aminet.net
+
+What to expect in the daemon log (I can watch it live from here):
+  CONNECT aminet.net:443 -> handshake -> relay
+Full page + all inline images should load; downloads too.
+
+If anything misbehaves: the old libs are still on this share under
+old-modelB/ — copying them back + cold boot restores the previous state.

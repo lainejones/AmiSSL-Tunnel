@@ -28,6 +28,8 @@
 #include <exec/memory.h>
 #include <exec/lists.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <dos/dos.h>
 
 /* Model B uses the resident bsdsocket directly; no ssl_lvo.h / BSDSSL_LVO_* needed. */
 
@@ -566,6 +568,73 @@ static LONG _dos_getvar(APTR dosbase, STRPTR name, STRPTR buf, LONG size)
     return d0;
 }
 
+/* ---- File diagnostics: T:amissl-tunnel.log --------------------------------
+ * The shim runs inside the browser with no console, and the OOP_PROBE channel
+ * needs a WORKING SocketBase - useless for diagnosing a NULL/failed one, which
+ * is exactly the failure mode seen on the A4000 (SSL_connect returns -1 with
+ * zero daemon contact).  A plain file works in every failure mode and is
+ * readable remotely via NetHarness (EXEC "type T:amissl-tunnel.log").
+ * Set AMISSL_FILELOG 0 for a release build. */
+#define AMISSL_FILELOG 1
+
+#if AMISSL_FILELOG
+/* Append "<tag> 0xXXXXXXXX\n".  Opens/closes per line so nothing is lost if
+ * the machine wedges or the app crashes mid-connection.
+ *
+ * Uses the NDK's proto/dos.h inlines (they resolve against a DOSBase variable
+ * in scope, exactly like proto/exec.h does with SysBase here) rather than
+ * hand-written LVO asm — a first attempt with hand-rolled asm created the file
+ * but silently wrote nothing. */
+/* exec RawPutChar(c)(d0) — LVO -516.  Hand-rolled because it lives in
+ * amiga.lib, which a -nostdlib library build doesn't link. */
+static void _raw_putchar(struct ExecBase *sysbase, UBYTE c)
+{
+    register LONG d0   __asm("d0") = (LONG)c;
+    register APTR base __asm("a6") = sysbase;
+    __asm volatile ("jsr -516(%%a6)"
+        : "+d"(d0)
+        : "a"(base)
+        : "cc", "memory", "d1", "a0", "a1");
+}
+
+static void dbg_log(const char *tag, ULONG v)
+{
+    struct ExecBase *SysBase = g_SysBase;
+    UBYTE  line[96];
+    UWORD  n = 0, i;
+    static const char hexd[] = "0123456789abcdef";
+
+    if (!SysBase) return;
+    for (i = 0; tag[i] && n < 60; i++) line[n++] = (UBYTE)tag[i];
+    line[n++] = ' '; line[n++] = '0'; line[n++] = 'x';
+    for (i = 0; i < 8; i++) line[n++] = (UBYTE)hexd[(v >> (28 - i * 4)) & 0xF];
+    line[n++] = '\n';
+
+    /* Two independent channels, because each can fail in ways the other
+     * survives — and a diagnostic you can't trust is worse than none:
+     *  1. exec RawPutChar (LVO -516): needs only SysBase, legal from any
+     *     context, captured by Sashimi if it's running.
+     *  2. an appended file: readable remotely via NetHarness even with no
+     *     Sashimi armed, but needs a Process context for DOS packet I/O. */
+    for (i = 0; i < n; i++) _raw_putchar(SysBase, line[i]);
+
+    {
+        struct Library *DOSBase = OpenLibrary((CONST_STRPTR)"dos.library", 36);
+        if (DOSBase) {
+            BPTR fh = Open((CONST_STRPTR)"T:amissl-tunnel.log", MODE_READWRITE);
+            if (fh) {
+                Seek(fh, 0, OFFSET_END);
+                Write(fh, (CONST_APTR)line, (LONG)n);
+                Close(fh);
+            }
+            CloseLibrary(DOSBase);
+        }
+    }
+}
+#else
+#define dbg_log(t, v) do { } while (0)
+#endif
+
 /* Read ENV:AMISSLPROXY ("host:port") ONCE into g_daemon_ip / g_daemon_port so the
  * shim can be pointed at any LAN daemon without recompiling (the Installer writes
  * this var).  host may be a dotted-quad IP or a hostname; port is decimal.  On any
@@ -776,12 +845,19 @@ static LONG sess_connect(APTR bbase, struct SslSess *s)
 
     /* 1. our own (blocking) socket to the LAN daemon */
     sfd = _bsd_socket(bbase, 2, 1, 0);
+    dbg_log("tun.socket   ", (ULONG)sfd);
     if (sfd < 0) return -1;
     sa.sin_family = 2;
     sa.sin_port   = daemon_port(bbase);                  /* ENV:AMISSLPROXY or default */
     sa.sin_addr   = daemon_ip(bbase);
     for (i = 0; i < 8; i++) sa.sin_zero[i] = 0;
-    if (_bsd_connect(bbase, sfd, (APTR)&sa, 16) != 0) { _bsd_closesocket(bbase, sfd); return -1; }
+    dbg_log("tun.daemonip ", sa.sin_addr);
+    dbg_log("tun.daemonpt ", (ULONG)sa.sin_port);
+    {
+        LONG cr = _bsd_connect(bbase, sfd, (APTR)&sa, 16);
+        dbg_log("tun.connect  ", (ULONG)cr);
+        if (cr != 0) { _bsd_closesocket(bbase, sfd); return -1; }
+    }
 
     /* 2. send "CONNECT <sni> <port>\n" (port learned from the app fd above) */
     for (i = 0; cmd[i]; i++) line[ll++] = (UBYTE)cmd[i];
@@ -1211,6 +1287,8 @@ LONG ami_InitAmiSSLA(APTR tagList_a0 __asm("a0"),
      * GetTagData(AmiSSL_SocketBase)); it never opens its own bsdsocket.  Opening
      * a 2nd per-task base on Roadshow corrupted iBrowse's socket context. */
     sb = find_tag(tl, AmiSSL_SocketBase, 0);
+    dbg_log("Init.taglist ", (ULONG)tl);
+    dbg_log("Init.sockbase", sb);
     if (sb) {
         struct ExecBase *SysBase = base->SysBase;
         base->BsdBase = (APTR)sb;
@@ -1488,6 +1566,7 @@ SSL *ami_SSL_new(SSL_CTX *ctx __asm("a0"),
     struct SslSess *s;
     APTR tb;
     (void)ctx;
+    dbg_log("SSLnew.bbase ", (ULONG)base->BsdBase);
     if (!base->BsdBase) return NULL;
     probe_marker(base->BsdBase, 0xA2);
     s = sess_alloc();                  /* daemon SSLObject created later at connect */
@@ -1518,6 +1597,8 @@ LONG ami_SSL_set_fd(SSL *ssl __asm("a0"), LONG fd __asm("d0"),
     struct SslSess *s = sess_from_ssl(ssl);
     probe_marker(base->BsdBase, 0xA3);
     probe_marker(base->BsdBase, 0xFD000000UL | ((ULONG)fd & 0xFFFF));  /* the app fd */
+    dbg_log("SSLsetfd.sess", (ULONG)s);
+    dbg_log("SSLsetfd.fd  ", (ULONG)fd);
     if (!s) return 0;
     s->fd = fd;          /* the app's own socket to server:443 */
     return 1;
@@ -1958,6 +2039,10 @@ LONG ami_SSL_connect(SSL *ssl __asm("a0"),
                      struct AmiSSLBase *base __asm("a6"))
 {
     struct SslSess *s = sess_from_ssl(ssl);
+    /* Three ways to fail here with ZERO network activity - log which. */
+    dbg_log("SSLconn.bbase", (ULONG)base->BsdBase);
+    dbg_log("SSLconn.sess ", (ULONG)s);
+    dbg_log("SSLconn.appfd", s ? (ULONG)s->fd : 0xFFFFFFFFUL);
     if (!base->BsdBase || !s || s->fd < 0) return -1;
     if (!s->sni[0]) {                       /* fall back to last SNI if app didn't set one */
         UWORD i;
