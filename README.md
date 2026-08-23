@@ -24,6 +24,13 @@ amissl.library + amisslmaster.library      ← AmiSSL/OpenSSL ABI shim (ABI-froz
 
 ## Status
 
+![aminet.net over HTTPS on a real Amiga 500](docs/a500-aminet-https.png)
+
+*aminet.net loaded over HTTPS on a real Amiga 500 (68EC030, Roadshow,
+BlueSCSI DaynaPORT WiFi), TLS offloaded to a LAN daemon — 2026-08-23, the
+first fully-working real-hardware run.*
+
+
 **Working end-to-end on 68k AmigaOS.** The shim in `amiga/` (`amissl.library` +
 `amisslmaster.library`) is built and validated in WinUAE (clean OS 3.2 / 68020 with
 `bsdsocket_emu`): **iBrowse 3**, **AWeb 3.6b8** and **Amelinium** all load
