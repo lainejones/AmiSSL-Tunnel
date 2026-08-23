@@ -134,8 +134,8 @@ _bsd_call2d(APTR bbase, WORD lvo, ULONG d0v, ULONG d1v)
     register ULONG d1   __asm("d1") = d1v;
     register APTR  base __asm("a6") = bbase;
     __asm volatile ("jsr %c3(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "d"(d1), "i"(lvo)
+        : "+d"(d0), "+d"(d1)
+        : "a"(base), "i"(lvo)
         : "a0", "a1", "cc", "memory");
     return d0;
 }
@@ -149,8 +149,8 @@ _bsd_call_dab(APTR bbase, WORD lvo, ULONG d0v, APTR ptr, ULONG d1v)
     register APTR  xa0  __asm("a0") = ptr;
     register APTR  base __asm("a6") = bbase;
     __asm volatile ("jsr %c4(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "d"(d1), "a"(xa0), "i"(lvo)
+        : "+d"(d0), "+d"(d1), "+a"(xa0)
+        : "a"(base), "i"(lvo)
         : "a1", "cc", "memory");
     return d0;
 }
@@ -163,8 +163,8 @@ _bsd_call_da(APTR bbase, WORD lvo, ULONG d0v, APTR ptr)
     register APTR  xa0  __asm("a0") = ptr;
     register APTR  base __asm("a6") = bbase;
     __asm volatile ("jsr %c3(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "a"(xa0), "i"(lvo)
+        : "+d"(d0), "+a"(xa0)
+        : "a"(base), "i"(lvo)
         : "d1", "a1", "cc", "memory");
     return d0;
 }
@@ -1000,8 +1000,8 @@ static LONG call_old_ws(APTR fn, LONG nfds, APTR rf, APTR wf, APTR ef, APTR tv,
     register APTR  a6  __asm("a6") = sb;
     register APTR  fnr __asm("a5") = fn;
     __asm volatile ("jsr (%%a5)"
-        : "+d"(d0)
-        : "a"(a0), "a"(a1), "a"(a2), "a"(a3), "d"(d1), "a"(a6), "a"(fnr)
+        : "+d"(d0), "+a"(a0), "+a"(a1), "+d"(d1)
+        : "a"(a2), "a"(a3), "a"(a6), "a"(fnr)
         : "cc", "memory");
     return d0;
 }
@@ -1013,8 +1013,8 @@ static LONG call_old_ioctl(APTR fn, LONG fd, ULONG req, APTR argp, APTR sb)
     register APTR  a6  __asm("a6") = sb;
     register APTR  fnr __asm("a5") = fn;
     __asm volatile ("jsr (%%a5)"
-        : "+d"(d0)
-        : "d"(d1), "a"(a0), "a"(a6), "a"(fnr)
+        : "+d"(d0), "+d"(d1), "+a"(a0)
+        : "a"(a6), "a"(fnr)
         : "a1", "cc", "memory");
     return d0;
 }

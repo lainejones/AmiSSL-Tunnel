@@ -54,8 +54,8 @@ static LONG call_amissl_init(struct Library *amisslbase, APTR taglist)
     if (!amisslbase)
         return -1;
     __asm volatile ("jsr -36(%%a6)"
-        : "=d"(d0)
-        : "a"(a6), "a"(a0)
+        : "=d"(d0), "+a"(a0)
+        : "a"(a6)
         : "d1", "a1", "cc", "memory");
     return d0;
 }
