@@ -214,8 +214,8 @@ _bsd_gethostbyname(APTR bbase, STRPTR name)
     register STRPTR xname __asm("a0") = name;
     register APTR   base  __asm("a6") = bbase;
     __asm volatile ("jsr -210(%%a6)"
-        : "=d"(res)
-        : "a"(base), "a"(xname)
+        : "=d"(res), "+a"(xname)
+        : "a"(base)
         : "d1", "a1", "cc", "memory");
     return res;
 }
@@ -228,8 +228,8 @@ _bsd_socket(APTR bbase, LONG domain, LONG type, LONG proto)
     register LONG d2   __asm("d2") = proto;
     register APTR base __asm("a6") = bbase;
     __asm volatile ("jsr -30(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "d"(d1), "d"(d2)
+        : "+d"(d0), "+d"(d1)
+        : "a"(base), "d"(d2)
         : "a0", "a1", "cc", "memory");
     return d0;
 }
@@ -242,8 +242,8 @@ _bsd_connect(APTR bbase, LONG fd, APTR sa, LONG salen)
     register LONG d1   __asm("d1") = salen;
     register APTR base __asm("a6") = bbase;
     __asm volatile ("jsr -54(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "a"(a0), "d"(d1)
+        : "+d"(d0), "+a"(a0), "+d"(d1)
+        : "a"(base)
         : "a1", "cc", "memory");
     return d0;
 }
@@ -259,8 +259,8 @@ _bsd_getpeername(APTR bbase, LONG s, APTR name, APTR namelen)
     register APTR a1   __asm("a1") = namelen;
     register APTR base __asm("a6") = bbase;
     __asm volatile ("jsr -108(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "a"(a0), "a"(a1)
+        : "+d"(d0), "+a"(a0), "+a"(a1)
+        : "a"(base)
         : "d1", "cc", "memory");
     return d0;
 }
@@ -275,8 +275,8 @@ _bsd_dup2socket(APTR bbase, LONG oldfd, LONG newfd)
     register LONG d1   __asm("d1") = newfd;
     register APTR base __asm("a6") = bbase;
     __asm volatile ("jsr -264(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "d"(d1)
+        : "+d"(d0), "+d"(d1)
+        : "a"(base)
         : "a0", "a1", "cc", "memory");
     return d0;
 }
@@ -406,7 +406,8 @@ _bsd_send(APTR bbase, LONG s, CONST_APTR buf, LONG len, LONG flags)
     register LONG      d2   __asm("d2") = flags;
     register APTR      base __asm("a6") = bbase;
     __asm volatile ("jsr -66(%%a6)"
-        : "+d"(d0) : "a"(base), "a"(a0), "d"(d1), "d"(d2)
+        : "+d"(d0), "+a"(a0), "+d"(d1)
+        : "a"(base), "d"(d2)
         : "a1", "cc", "memory");
     return d0;
 }
@@ -419,7 +420,8 @@ _bsd_recv(APTR bbase, LONG s, APTR buf, LONG len, LONG flags)
     register LONG d2   __asm("d2") = flags;
     register APTR base __asm("a6") = bbase;
     __asm volatile ("jsr -78(%%a6)"
-        : "+d"(d0) : "a"(base), "a"(a0), "d"(d1), "d"(d2)
+        : "+d"(d0), "+a"(a0), "+d"(d1)
+        : "a"(base), "d"(d2)
         : "a1", "cc", "memory");
     return d0;
 }
@@ -462,7 +464,8 @@ static void wait_readable(APTR bbase, LONG fd, LONG secs)
     tv[0] = (ULONG)secs; tv[1] = 0;
     a0 = (APTR)rset; a3 = (APTR)tv;
     __asm volatile ("jsr -126(%%a6)"
-        : "+d"(d0) : "a"(a0), "a"(a1), "a"(a2), "a"(a3), "d"(d1), "a"(a6)
+        : "+d"(d0), "+a"(a0), "+a"(a1), "+d"(d1)
+        : "a"(a2), "a"(a3), "a"(a6)
         : "cc", "memory");
 }
 
@@ -484,7 +487,8 @@ static void wait_writable(APTR bbase, LONG fd, LONG secs)
     tv[0] = (ULONG)secs; tv[1] = 0;
     a1 = (APTR)wset; a3 = (APTR)tv;
     __asm volatile ("jsr -126(%%a6)"
-        : "+d"(d0) : "a"(a0), "a"(a1), "a"(a2), "a"(a3), "d"(d1), "a"(a6)
+        : "+d"(d0), "+a"(a0), "+a"(a1), "+d"(d1)
+        : "a"(a2), "a"(a3), "a"(a6)
         : "cc", "memory");
 }
 
@@ -552,19 +556,29 @@ static ULONG parse_ipv4(const char *s)
     return (v << 8) | (oct & 0xff);
 }
 
-/* GetVar(name a0, buffer a1, size d0, flags d1) — dos.library LVO -906.
- * Returns the variable's length, or -1 if it does not exist. */
+/* GetVar(name D1, buffer D2, size D3, flags D4) — dos.library LVO -906.
+ * Returns the variable's length, or -1 if it does not exist.
+ *
+ * NOTE: dos.library passes ALL arguments in data registers D1-D4 (see the
+ * dos FD file), NOT A0/A1/D0. The first version of this call used A0/A1/D0
+ * and so handed GetVar garbage - it always returned -1, the shim silently
+ * fell back to its compiled default 127.0.0.1:8443, and every REAL-hardware
+ * test failed with zero daemon contact (the A4000 mystery, and the A500,
+ * 2026-08-23). WinUAE masked it: under bsdsocket_emu 127.0.0.1 IS the host
+ * PC running the test daemon, so the fallback worked and the env path was
+ * never actually exercised. */
 static LONG _dos_getvar(APTR dosbase, STRPTR name, STRPTR buf, LONG size)
 {
-    register LONG   d0   __asm("d0") = size;
-    register LONG   d1   __asm("d1") = 0;     /* flags 0: local then global ENV: */
-    register STRPTR a0   __asm("a0") = name;
-    register STRPTR a1   __asm("a1") = buf;
+    register LONG   d0   __asm("d0") = 0;
+    register STRPTR d1   __asm("d1") = name;
+    register STRPTR d2   __asm("d2") = buf;
+    register LONG   d3   __asm("d3") = size;
+    register LONG   d4   __asm("d4") = 0;     /* flags 0: ENV: then ENVARC: */
     register APTR   base __asm("a6") = dosbase;
     __asm volatile ("jsr -906(%%a6)"
-        : "+d"(d0)
-        : "a"(base), "a"(a0), "a"(a1), "d"(d1)
-        : "cc", "memory");
+        : "+d"(d0), "+d"(d1), "+d"(d2), "+d"(d3), "+d"(d4)
+        : "a"(base)
+        : "cc", "memory", "a0", "a1");
     return d0;
 }
 
@@ -867,16 +881,20 @@ static LONG sess_connect(APTR bbase, struct SslSess *s)
     line[ll++] = '\n';
     for (off = 0; off < ll; off += r) {
         r = _bsd_send(bbase, sfd, (CONST_APTR)(line + off), ll - off, 0);
-        if (r <= 0) { _bsd_closesocket(bbase, sfd); return -1; }
+        if (r <= 0) { dbg_log("tun.sendfail ", (ULONG)r);
+                      _bsd_closesocket(bbase, sfd); return -1; }
     }
+    dbg_log("tun.sent     ", (ULONG)ll);
 
     /* 3. read the daemon's status line; "OK\n" = TLS up, "ERR ...\n" = failed */
     {
         UBYTE c, ok = 0, first = 1; LONG got = 0;
         for (;;) {
             n = _bsd_recv(bbase, sfd, (APTR)&c, 1, 0);
-            if (n != 1) { _bsd_closesocket(bbase, sfd); return -1; }
-            if (first) { ok = (c == 'O'); first = 0; }
+            if (n != 1) { dbg_log("tun.recvfail ", (ULONG)n);
+                          _bsd_closesocket(bbase, sfd); return -1; }
+            if (first) { ok = (c == 'O'); first = 0;
+                         dbg_log("tun.stat1st  ", (ULONG)c); }
             if (c == '\n') break;
             if (++got > 80) break;
         }
@@ -884,8 +902,13 @@ static LONG sess_connect(APTR bbase, struct SslSess *s)
     }
 
     /* 4. swap iBrowse's fd onto the daemon connection, then drop our extra ref */
-    if (_bsd_dup2socket(bbase, sfd, s->fd) < 0) { _bsd_closesocket(bbase, sfd); return -1; }
+    {
+        LONG d2 = _bsd_dup2socket(bbase, sfd, s->fd);
+        dbg_log("tun.dup2     ", (ULONG)d2);
+        if (d2 < 0) { _bsd_closesocket(bbase, sfd); return -1; }
+    }
     _bsd_closesocket(bbase, sfd);
+    dbg_log("tun.relayup  ", (ULONG)s->fd);
     s->oracle_id = 1;   /* relay established (reused field = "connected" flag) */
     return 1;
 }
