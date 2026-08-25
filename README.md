@@ -31,12 +31,16 @@ BlueSCSI DaynaPORT WiFi), TLS offloaded to a LAN daemon — 2026-08-23, the
 first fully-working real-hardware run.*
 
 
-**Working end-to-end on 68k AmigaOS.** The shim in `amiga/` (`amissl.library` +
-`amisslmaster.library`) is built and validated in WinUAE (clean OS 3.2 / 68020 with
-`bsdsocket_emu`): **iBrowse 3**, **AWeb 3.6b8** and **Amelinium** all load
-**https://aminet.net** over the offload — full page **plus all 14 inline images, zero
-failures, on the first pass**. The chain is
+**Working end-to-end on real 68k hardware** (v2.0, 2026-08-23): verified on an
+Amiga 500 (68EC030, Roadshow, WiFi DaynaPORT), an Amiga 2000 (X-Surf) and a CD32
+(SLIP) — Amelinium and iBrowse-class browsers load **https://aminet.net** and
+other modern-TLS sites through the offload, full pages with all inline images.
+The chain is
 `browser → amisslmaster → amissl shim → tls_proxy.py → TLS to server → plaintext relay`.
+
+(v1.0 was validated only in WinUAE — which, it turned out, masked two 68k ABI
+bugs that made it fail on every real machine; see the v2.0 release notes for
+that story. Emulator validation of hand-rolled library calls is not validation.)
 
 **How it works:** at `SSL_connect` the shim opens a socket to the daemon and sends
 `CONNECT <host> <port>`; once the daemon has completed the verified TLS handshake to
